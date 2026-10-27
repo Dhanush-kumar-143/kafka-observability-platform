@@ -1,0 +1,107 @@
+# Evaluation interval is 15s and every alert uses "for" <= 2m,
+# so each alert fires well within 5 minutes of the problem starting.
+groups:
+  - name: kafka-availability
+    rules:
+      - alert: KafkaExporterDown
+        expr: up{job="kafka-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka Exporter is down"
+          description: "Prometheus cannot scrape kafka-exporter. Lag and offset metrics are unavailable."
+
+      - alert: KafkaBrokerJmxDown
+        expr: up{job="kafka-jmx"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka broker JMX endpoint is down"
+          description: "Prometheus cannot scrape the broker JMX exporter on kafka:7071."
+
+      - alert: KafkaNoBrokersAvailable
+        expr: kafka_brokers < 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No Kafka brokers reported"
+          description: "kafka_brokers is {{ $value }}."
+
+      - alert: KafkaUnderReplicatedPartitions
+        expr: kafka_server_replicamanager_underreplicatedpartitions > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Under-replicated partitions on broker"
+          description: "{{ $value }} partitions are under-replicated."
+
+      - alert: KafkaActiveControllerCountInvalid
+        expr: sum(kafka_controller_kafkacontroller_activecontrollercount) != 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cluster does not have exactly one active controller"
+          description: "Active controller count is {{ $value }}."
+
+  - name: kafka-consumers
+    rules:
+      - alert: KafkaConsumerLagHigh
+        expr: sum by (consumergroup, topic) (kafka_consumergroup_lag) > 100
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consumer lag high on {{ $labels.topic }}"
+          description: "Group {{ $labels.consumergroup }} is {{ $value }} messages behind on {{ $labels.topic }}."
+
+      - alert: KafkaConsumerLagCritical
+        expr: sum by (consumergroup, topic) (kafka_consumergroup_lag) > 1000
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Consumer lag critical on {{ $labels.topic }}"
+          description: "Group {{ $labels.consumergroup }} is {{ $value }} messages behind on {{ $labels.topic }}."
+
+      - alert: ConsumerProcessingErrors
+        expr: sum by (stream) (increase(obs_consumer_errors_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consumer errors on stream {{ $labels.stream }}"
+          description: "{{ $value }} consumer errors in the last 5 minutes."
+
+      - alert: ConsumerEndToEndLatencyHigh
+        expr: histogram_quantile(0.95, sum by (le, stream) (rate(obs_consumer_end_to_end_latency_seconds_bucket[5m]))) > 30
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 end-to-end latency above 30s on {{ $labels.stream }}"
+          description: "Events are taking {{ $value | humanizeDuration }} to be processed."
+
+  - name: kafka-producers
+    rules:
+      - alert: ProducerStreamStalled
+        expr: sum by (stream) (rate(obs_producer_messages_sent_total[2m])) == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Producer stream {{ $labels.stream }} stopped sending"
+          description: "No messages were acknowledged for stream {{ $labels.stream }} in 2 minutes."
+
+      - alert: ProducerDeliveryErrors
+        expr: sum by (stream) (increase(obs_producer_errors_total[5m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Producer errors on stream {{ $labels.stream }}"
+          description: "{{ $value }} producer errors in the last 5 minutes."

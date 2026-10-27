@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-exporter
+  namespace: kafka-obs
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: kafka-exporter }
+  template:
+    metadata:
+      labels: { app: kafka-exporter }
+    spec:
+      containers:
+        - name: kafka-exporter
+          image: danielqsj/kafka-exporter:v1.7.0
+          args: ["--kafka.server=kafka:9092"]
+          ports:
+            - { name: metrics, containerPort: 9308 }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 9308 }
+            initialDelaySeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-exporter
+  namespace: kafka-obs
+spec:
+  selector: { app: kafka-exporter }
+  ports:
+    - { name: metrics, port: 9308, targetPort: 9308 }

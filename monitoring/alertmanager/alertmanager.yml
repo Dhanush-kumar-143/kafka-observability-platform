@@ -1,0 +1,17 @@
+route:
+  receiver: default
+  group_by: [alertname, topic]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 4h
+
+receivers:
+  # No notification target by default: alerts are visible in the Alertmanager UI
+  # (http://localhost:9093), Prometheus (/alerts) and the Grafana dashboard.
+  - name: default
+  # To send Slack notifications, replace the receiver above with:
+  # - name: default
+  #   slack_configs:
+  #     - api_url: https://hooks.slack.com/services/XXX/YYY/ZZZ
+  #       channel: "#alerts"
+  #       send_resolved: true

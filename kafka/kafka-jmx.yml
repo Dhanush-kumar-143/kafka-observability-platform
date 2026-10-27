@@ -1,0 +1,29 @@
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+rules:
+  # Broker-wide throughput counters: MessagesInPerSec, BytesInPerSec, BytesOutPerSec, ...
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=(.+)PerSec><>Count
+    name: kafka_server_brokertopicmetrics_$1_total
+    type: COUNTER
+
+  # Replication health: UnderReplicatedPartitions, PartitionCount, LeaderCount, ...
+  - pattern: kafka.server<type=ReplicaManager, name=(.+)><>Value
+    name: kafka_server_replicamanager_$1
+    type: GAUGE
+
+  # Controller health: ActiveControllerCount, OfflinePartitionsCount, ...
+  - pattern: kafka.controller<type=KafkaController, name=(.+)><>Value
+    name: kafka_controller_kafkacontroller_$1
+    type: GAUGE
+
+  # Request handler saturation
+  - pattern: kafka.server<type=KafkaRequestHandlerPool, name=RequestHandlerAvgIdlePercent><>OneMinuteRate
+    name: kafka_server_requesthandler_avg_idle_percent
+    type: GAUGE
+
+  # Request latency (total time) by request type
+  - pattern: kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>99thPercentile
+    name: kafka_network_requestmetrics_totaltime_p99_ms
+    labels:
+      request: "$1"
+    type: GAUGE

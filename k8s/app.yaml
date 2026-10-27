@@ -1,0 +1,77 @@
+# Producer and consumer. ${ECR_REGISTRY} and ${IMAGE_TAG} are substituted by scripts/deploy-eks.sh.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer
+  namespace: kafka-obs
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: producer }
+  template:
+    metadata:
+      labels: { app: producer }
+    spec:
+      containers:
+        - name: producer
+          image: ${ECR_REGISTRY}/kafka-obs-app:${IMAGE_TAG}
+          args: ["app.producer"]
+          env:
+            - { name: KAFKA_BOOTSTRAP_SERVERS, value: "kafka:9092" }
+          ports:
+            - { name: metrics, containerPort: 8000 }
+          readinessProbe:
+            httpGet: { path: /metrics, port: 8000 }
+            initialDelaySeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: producer
+  namespace: kafka-obs
+spec:
+  selector: { app: producer }
+  ports:
+    - { name: metrics, port: 8000, targetPort: 8000 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer
+  namespace: kafka-obs
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: consumer }
+  template:
+    metadata:
+      labels: { app: consumer }
+    spec:
+      containers:
+        - name: consumer
+          image: ${ECR_REGISTRY}/kafka-obs-app:${IMAGE_TAG}
+          args: ["app.consumer"]
+          env:
+            - { name: KAFKA_BOOTSTRAP_SERVERS, value: "kafka:9092" }
+            - { name: CONSUMER_DELAY_MS, value: "0" }
+          ports:
+            - { name: metrics, containerPort: 8001 }
+          readinessProbe:
+            httpGet: { path: /metrics, port: 8001 }
+            initialDelaySeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: consumer
+  namespace: kafka-obs
+spec:
+  selector: { app: consumer }
+  ports:
+    - { name: metrics, port: 8001, targetPort: 8001 }
