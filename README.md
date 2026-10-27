@@ -218,7 +218,3 @@ This is a learning and portfolio project, not a hardened production deployment:
 - Single broker, replication factor 1, no TLS or SASL authentication.
 - Prometheus on Kubernetes uses `emptyDir` storage, so metrics are lost if the pod restarts.
 - Alertmanager has no notification receiver configured by default (a Slack example is commented in `alertmanager.yml`).
-
-## License
-
-MIT. See [LICENSE](LICENSE).
